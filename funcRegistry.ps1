@@ -1,9 +1,9 @@
 #################################
-#           LockOut             #
-#      File: funcRegistry       #
+#            Surveys            #
+#      File: funcRegistry v2    #
 #        By Scott Lyon          #
-#         SubVer:  v1.5         #
-#          Oct 19,2023          #
+#         SubVer:  v2.3         #
+#          Jun 24,2024          #
 #################################
 function Split-RegistryPath {
     param($registryPath)
@@ -148,21 +148,21 @@ function Dummy-PathComment{
 function get-HiveValue{
     param($rHive)
     switch ($rHive) {
-        {($_ -eq "HKCR") -or ($_ -eq "HKEY_CLASSES_ROOT")} { $HiveValue = [uint32]"0x80000000" }
-        {($_ -eq "HKCU") -or ($_ -eq "HKEY_CURRENT_USER")} { $HiveValue = [uint32]"0x80000001" }
-        {($_ -eq "HKLM") -or ($_ -eq "HKEY_LOCAL_MACHINE")} { $HiveValue = [uint32]"0x80000002" }
-        {($_ -eq "HKU") -or ($_ -eq "HKEY_USERS")} { $HiveValue = [uint32]"0x80000003" }
-        {($_ -eq "HKCC") -or ($_ -eq "HKEY_CURRENT_CONFIG")} { $HiveValue = [uint32]"0x80000005" }
+        {($_ -eq "HKCR") -or ($_ -eq "HKEY_CLASSES_ROOT")} { $HiveValue = "ClassesRoot" }
+        {($_ -eq "HKCU") -or ($_ -eq "HKEY_CURRENT_USER")} { $HiveValue = "CurrentUser" }
+        {($_ -eq "HKLM") -or ($_ -eq "HKEY_LOCAL_MACHINE")} { $HiveValue = "LocalMachine" }
+        {($_ -eq "HKU") -or ($_ -eq "HKEY_USERS")} { $HiveValue = "Users" }
+        {($_ -eq "HKCC") -or ($_ -eq "HKEY_CURRENT_CONFIG")} { $HiveValue = "CurrentConfig" }
         default { Write-Debug "Invalid Hive. [$rHive]" }
     }
     return $HiveValue
 }
 function Check-Hive {
     param($compName, $sid)
-    
-    # Enumerate registry subkeys
-    $resultEnumSubKeys = $([wmiclass]"\\$compName\root\default:StdRegProv").EnumKey($(get-HiveValue "HKU"), $sid) 
-    if ($resultEnumSubKeys.ReturnValue -eq 0) {
+    $HiveValue = get-HiveValue "HKU"
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName)
+    if ( $sid -in $regInstance.GetSubKeyNames()) {
         # If the subkeys are found, the user's hive is loaded
         return $true
     } else {
@@ -170,6 +170,249 @@ function Check-Hive {
         return $false
     }
 }
+function Dummy-HiveComment{
+# Usage example
+#$computerName = "RemoteComputerName"
+#$username = "Username"
+#$userSID = "UserSID"
+
+### Load-RegistryHive -computerName $computerName -username $username -userSID $userSID
+
+# Do some operations with the loaded hive
+
+### Unload-RegistryHive -computerName $computerName -userSID $userSID
+}
+function get-RemoteRegistryKeys{
+    param($compName, $rHive, $rPath)
+    $HiveValue = get-HiveValue $rHive
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName, [Microsoft.Win32.RegistryView]::Registry64)
+    # Enumerate registry values
+    $RegKey = $regInstance.OpenSubKey($rPath)
+   ## write-host "Host:$($result.sNames)"
+    if ($RegKey.ValueCount -gt 0) {
+        $result = $RegKey.GetSubKeyNames()
+    } else {
+        Write-Debug "Failed to retrieve value. Return Code: $($result.ReturnValue) Path: $rPath"
+        $result = $false
+    }
+    if ($RegKey -ne $null){
+        $RegKey.Dispose()
+        $RegKey = $null
+    }
+    $regInstance.Dispose()
+    $regInstance = $null
+    return $result
+}
+function get-RemoteRegistryEntries{
+    param($compName, $rHive, $rPath)
+    $HiveValue = get-HiveValue $rHive
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName, [Microsoft.Win32.RegistryView]::Registry64)
+    # Enumerate registry values
+    $RegKey = $regInstance.OpenSubKey($rPath)
+   ## write-host "Host:$($result.sNames)"
+    if ($RegKey.ValueCount -gt 0) {
+        $result = $RegKey.GetValueNames()
+        
+    } else {
+        Write-Debug "Failed to retrieve value. Return Code: $($result.ReturnValue) Path: $($rHive):\$rPath"
+        $result = $false
+    }
+    if ($RegKey -ne $null){
+        $RegKey.Dispose()
+        $RegKey = $null
+    }
+    $regInstance.Dispose()
+    $regInstance = $null
+    return $result
+}
+function get-RemoteRegistryKeys{
+    param($compName, $rHive, $rPath)
+    $HiveValue = get-HiveValue $rHive
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName, [Microsoft.Win32.RegistryView]::Registry64)
+    # Enumerate registry values
+    $RegKey = $regInstance.OpenSubKey($rPath)
+   ## write-host "Host:$($result.sNames)"
+    if ($RegKey.ValueCount -gt 0) {
+        $result = $RegKey.GetSubKeyNames()
+    } else {
+        Write-Debug "Failed to retrieve value. Return Code: $($result.ReturnValue) Path: $rPath"
+        $result = $false
+    }
+    if ($RegKey -ne $null){
+        $RegKey.Dispose()
+        $RegKey = $null
+    }
+    $regInstance.Dispose()
+    $regInstance = $null
+    return $result
+}
+function Set-RemoteRegistryValue {
+    param($compName, $rHive, $rPath, $rKey, $valueType, $valueData)
+    write-debug "Path: $rPath"
+    write-debug "key : $rKey"
+    
+    # Create the registry key if it doesn't exist
+    New-RemoteRegistryKey -compName $compName -rHive $rHive -rPath $rPath -rKey $rKey
+    
+    write-debug "Path Created"
+    $HiveValue = Get-HiveValue $rHive
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName, [Microsoft.Win32.RegistryView]::Registry64)
+
+    $RegKey = $regInstance.OpenSubKey($rPath, $true)
+ if ($RegKey -ne $null) {
+        # Convert value type to numeric type (if needed)
+        $rType = $valueType
+        switch ($rType.ToLower()) {
+            "string" { $valueType = 1 }
+            "expandstring" { $valueType = 2 }
+            "binary" { $valueType = 3 }
+            "dword" { $valueType = 4 }
+            "hex" { $valueType = 5 }
+            "multistring" { $valueType = 7 }
+            "qword" { $valueType = 11 }
+        }
+        #Write-Debug "[$valueType]"
+        # Depending on the value type, use the appropriate method to set the value
+        switch ($valueType) {
+            1 { $RegKey.SetValue($rKey, $valueData, [Microsoft.Win32.RegistryValueKind]::String) }
+            2 { $RegKey.SetValue($rKey, $valueData, [Microsoft.Win32.RegistryValueKind]::ExpandString) }
+            3 { $RegKey.SetValue($rKey, $valueData, [Microsoft.Win32.RegistryValueKind]::Binary) }
+            4 { $RegKey.SetValue($rKey, $valueData, [Microsoft.Win32.RegistryValueKind]::DWord) }
+        
+            #5 { $RegKey.SetValue($rKey, $valueData, [Microsoft.Win32.RegistryValueKind]::Binary) }        
+            5 { $RegKey.SetValue($rKey, [byte[]](StringToByte $valueData), [Microsoft.Win32.RegistryValueKind]::Binary) }
+            7 { $RegKey.SetValue($rKey, $valueData, [Microsoft.Win32.RegistryValueKind]::QWord) }
+            default { Write-Debug "Invalid value type." }
+        }
+        #$RegKey.Flush()
+    } else {
+    }
+    $RegKey.Dispose()
+    $RegKey = $null
+    $regInstance.Dispose()
+    $regInstance = $null
+}
+function get-RemoteRegistryValue {
+    param($compName, $rHive, $rPath, $rKey)
+    
+    $HiveValue = Get-HiveValue $rHive
+
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName, [Microsoft.Win32.RegistryView]::Registry64)
+    $regValue = $null
+    # Enumerate registry values
+    $RegKey = $regInstance.OpenSubKey($rPath)
+    if ($RegKey.ValueCount -gt 0) {
+        $regValue = $RegKey.GetValue($rKey)
+          if ($regValue -ne $null){
+            switch ($regValue.GetType()) {
+                "String"   { $returnVal = $regValue }
+                "Int32"    { $returnVal =  $regValue }
+                "Byte[]"   { $returnVal =  ByteToString($regValue) }
+                "String[]" { $returnVal =  $regValue }
+                "Int64"    { $returnVal =  $regValue }
+                default    { $returnVal =  $regValue }
+            }
+         } else {
+            #Write-Debug "Failed to enumerate values. Return Code: $($RegKey.ToString()), Key: $($rHive):\$($rPath)\$($rKey)"
+            #return $false
+         }
+    }else{
+        #Write-Debug "Failed to read key. Return Code: $rPath, Key: $($rHive):\$($rPath)\"
+        #return $false
+    }
+    if ($RegKey -ne $null){
+        $RegKey.Dispose()
+        $RegKey = $null
+    }
+    $regInstance.Dispose()
+    $regInstance = $null
+    Return $returnVal
+}
+
+function New-RemoteRegistryKey {
+    param($compName, $rHive, $rPath)
+
+    $HiveValue = Get-HiveValue $rHive 
+    
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName)
+
+    # Convert path to a Key format
+    $splitPath = $rPath.split('\')
+    $rKey = $splitPath[-1]
+    $remotePath = $splitPath[0..($splitpath.length - 2)] -join '\'
+    # Check if the key exists
+    Write-Warning "Remote Path: $remotePath"
+ 
+    $RegKey = $regInstance.OpenSubKey($remotePath, $true)
+    $regKey
+    #$keyExists = $regInstance.EnumKey($HiveValue, $remotePath).sNames -contains $rKey
+    if ($RegKey -eq $null){
+        New-RemoteRegistryKey -compName $compName -rHive $rHive -rPath $remotePath
+        
+        $RegKey = $regInstance.OpenSubKey($remotePath, $true)
+    }
+    if ($rKey -notin $RegKey.GetSubKeyNames()) {
+        # If the key doesn't exist, create it
+        $null = $RegKey.CreateSubKey($rKey)
+    }
+    
+    if ($RegKey -ne $null){
+        $RegKey.Dispose()
+        $RegKey = $null
+    }
+    $regInstance.Dispose()
+    $regInstance = $null
+}
+function get-RemoteRegistryString{
+    param($compName, $rHive, $rPath, $rKey)
+    
+   return  get-RemoteRegistryValue $compName  $rHive  $rPath  $rKey
+}
+function Delete-RemoteRegistryValue{
+    param($compName, $rHive, $rPath, $rValue)
+    $HiveValue = get-HiveValue $rHive
+    # Create a Reg instance
+    $regInstance = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($HiveValue, $compName)
+    # Enumerate registry values
+    $RegKey = $regInstance.OpenSubKey($rPath, $true)
+    if ($rValue -in $RegKey.GetValueNames()) {
+        $RegKey.DeleteValue($rValue)
+        if ($rValue -notin $RegKey.GetValueNames()) {
+            $returnVal = $true
+        } else {
+            Write-Debug "Failed to delete value."
+            $returnVal = $false
+        }
+    } else {
+        Write-Debug "Failed to delete value. Value does not Exist"
+        $returnVal = $false
+    }
+    
+    if ($RegKey -ne $null){
+        $RegKey.Dispose()
+        $RegKey = $null
+    }
+    $regInstance.Dispose()
+    $regInstance = $null
+    return $returnVal
+}
+function StringToByte{
+    param($inStr)
+    return [byte[]] -split ($($inStr -replace ' ', '') -replace '..', '0x$& ')
+
+}
+function ByteToString{
+    param($inBytes)
+    return ($inBytes | ForEach-Object { [string]$('{0:d2}' -f [int]$_) }) -join " "
+}
+
+
 function Load-RegistryHive {
     param(
         [string]$computerName,
@@ -201,233 +444,5 @@ function Unload-RegistryHive {
         Write-Debug "Registry hive unloaded successfully."
     } else {
         Write-Debug "Failed to unload registry hive. Return Code: $processReturnValue"
-    }
-}
-function Dummy-HiveComment{
-# Usage example
-#$computerName = "RemoteComputerName"
-#$username = "Username"
-#$userSID = "UserSID"
-
-### Load-RegistryHive -computerName $computerName -username $username -userSID $userSID
-
-# Do some operations with the loaded hive
-
-### Unload-RegistryHive -computerName $computerName -userSID $userSID
-}
-function get-RemoteRegistryKeys{
-    param($compName, $rHive, $rPath)
-    $HiveValue = get-HiveValue $rHive
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-    $result = $regInstance.EnumKey($HiveValue, $rPath)
-   ## write-host "Host:$($result.sNames)"
-    if ($result.ReturnValue -eq 0) {
-        return $result.sNames
-    } else {
-        Write-Debug "Failed to retrieve value. Return Code: $($result.ReturnValue) Path: $($rHive):\$rPath"
-        return $false
-    }
-}
-function get-RemoteRegistryEntries{
-    param($compName, $rHive, $rPath)
-    $HiveValue = get-HiveValue $rHive
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-    $result = $regInstance.EnumValues($HiveValue, $rPath)
-    #write-host "Host:$($result.sNames)"
-    #write-host "Host:$($result.Type)"
-    if ($result.ReturnValue -eq 0) {
-        return $result.sNames
-    } else {
-        Write-Debug "Failed to retrieve value. Return Code: $($result.ReturnValue) Path: $($rHive):\$rPath"
-        return $false
-    }
-}
-function get-RemoteRegistryString{
-    param($compName, $rHive, $rPath, $rKey)
-    $HiveValue = get-HiveValue $rHive
-
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-    $result = $regInstance.GetStringValue($HiveValue, $rPath, $rKey)
-    
-    if ($result.ReturnValue -eq 0) {
-        return $result.sValue
-    } else {
-        Write-Debug "Failed to retrieve value. Return Code: $($result.ReturnValue)  Path: $($rHive):\$($rPath)::$rKey"
-        return $false
-    }
-}
-function Delete-RemoteRegistryValue{
-    param($compName, $rHive, $rPath, $rValue)
-    $HiveValue = get-HiveValue $rHive
-
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-    $result = $regInstance.DeleteValue($HiveValue, $rPath, $rValue)
-    
-    if ($result.ReturnValue -eq 0) {
-        return $result.sValue
-    } else {
-        Write-Debug "Failed to delete value. Return Code: $($result.ReturnValue)"
-        return $false
-    }
-}
-function New-RemoteRegistryKey {
-    param($compName, $rHive, $rPath)
-
-    $HiveValue = Get-HiveValue $rHive
-
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-
-    # Convert path to a Key format
-    $splitPath = $rPath.split('\')
-    $rKey = $splitPath[-1]
-    $remotePath = $splitPath[0..($splitpath.length - 2)] -join '\'
-
-    # Check if the key exists
-    $keyExists = $regInstance.EnumKey($HiveValue, $remotePath).sNames -contains $rKey
-    
-    if (-not $keyExists) {
-        # If the key doesn't exist, create it
-        $null = $regInstance.CreateKey($HiveValue, $rPath)
-    }
-}
-function Set-RemoteRegistryValue {
-    param($compName, $rHive, $rPath, $rKey, $valueType, $valueData)
-    # Create the registry key if it doesn't exist
-    New-RemoteRegistryKey -compName $compName -rHive $rHive -rPath $rPath -rKey $rKey
-
-    $HiveValue = Get-HiveValue $rHive
-
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-
-    # Convert value type to numeric type (if needed)
-    $rType = $valueType
-    switch ($rType) {
-        "String" { $valueType = 1 }
-        "ExpandString" { $valueType = 2 }
-        "Binary" { $valueType = 3 }
-        "Dword" { $valueType = 4 }
-        "Hex" { $valueType = 5 }
-        "MultiString" { $valueType = 7 }
-        "Qword" { $valueType = 11 }
-    }
-
-    # Depending on the value type, use the appropriate method to set the value
-    switch ($valueType) {
-        1 { $regInstance.SetStringValue($HiveValue, $rPath, $rKey, $valueData) }
-        2 { $regInstance.SetExpandedStringValue($HiveValue, $rPath, $rKey, $valueData) }
-        3 { $regInstance.SetBinaryValue($HiveValue, $rPath, $rKey, $valueData) }
-        4 { $regInstance.SetDWORDValue($HiveValue, $rPath, $rKey, $valueData) }
-        5 { $regInstance.SetBinaryValue($HiveValue, $rPath, $rKey, $($valueData -split ' ' | ForEach-Object { [byte]::Parse($_, 'Hex') })) }
-        7 { $regInstance.SetMultiStringValue($HiveValue, $rPath, $rKey, $valueData) }
-        default { Write-Debug "Invalid value type." }
-    }
-}
-function BackupSet-RemoteRegistryValue {
-    param($compName, $rHive, $rPath, $rKey, $valueType, $valueData)
-    $HiveValue = get-HiveValue $rHive
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-    
-    # Convert value type to numeric type (if needed)
-    $rType = $valueType
-    switch ($rType) {
-        "String" { $valueType = 1 }
-        "ExpandString" { $valueType = 2 }
-        "Binary" { $valueType = 3 }
-        "Dword" { $valueType = 4 }
-        "Qword" { $valueType = 11 }
-        "MultiString" { $valueType = 7 }
-    }
-    # Depending on the value type, use the appropriate method to set the value
-    switch ($valueType) {
-        1 { $regInstance.SetStringValue($HiveValue, $rPath, $rKey, $valueData) }
-        2 { $regInstance.SetExpandedStringValue($HiveValue, $rPath, $rKey, $valueData) }
-        3 { $regInstance.SetBinaryValue($HiveValue, $rPath, $rKey, $valueData) }
-        4 { $regInstance.SetDWORDValue($HiveValue, $rPath, $rKey, $valueData) }
-        7 { $regInstance.SetMultiStringValue($HiveValue, $rPath, $rKey, $valueData) }
-        default { Write-Debug "Invalid value type." }
-    }
-}
-function Get-RemoteRegistryValue {
-    param($compName, $rHive, $rPath, $rKey)
-    $HiveValue = Get-HiveValue $rHive
-
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-
-    # Enumerate registry values
-    $resultEnumKeys = $regInstance.EnumKey($HiveValue, $rPath)
-    if ($resultEnumKeys.ReturnValue -eq 0) {
-        $matchingKeys = $resultEnumKeys.sNames | Where-Object { $_ -like $rKey }
-        if ($matchingKeys.Count -gt 0) {
-            $foundKey = $matchingKeys[0]
-            $result = $regInstance.GetStringValue($HiveValue, "$rPath\$foundKey", $rKey)
-            if ($result.ReturnValue -eq 0) {
-                switch ($result.Types[0]) {
-                    1 { return $result.sValue }
-                    2 { return $result.sValue }
-                    3 {
-                        $hexString = $result.uValue | ForEach-Object { $_.ToString("X2") }
-                        return $hexString -join " "
-                    }
-                    4 { return $result.uValue }
-                    7 { return $result.sValue }
-                    default { return $false }
-                }
-            } else {
-                Write-Debug "Failed to read registry value. Return Code: $($result.ReturnValue), Key: $($rHive):\$($rPath)\$foundKey\$($rKey)"
-                return $false
-            }
-        }
-    } else {
-        Write-Debug "Failed to enumerate keys. Return Code: $($resultEnumKeys.ReturnValue), Key: $($rHive):\$($rPath)"
-        return $false
-    }
-}
-
-function get-RemoteRegistryValuebak {
-    param($compName, $rHive, $rPath, $rKey)
-    $HiveValue = get-HiveValue $rHive
-
-    # Create a WMI instance
-    $regInstance = [wmiclass]"\\$compName\root\default:StdRegProv"
-
-    # Enumerate registry values
-    $resultEnumValues = $regInstance.EnumValues($HiveValue, $rPath)
-    if ($resultEnumValues.ReturnValue -eq 0) {
-        for ($i = 0; $i -lt $resultEnumValues.sNames.Length; $i++) {
-            if ($resultEnumValues.sNames[$i] -eq $rKey){
-                    # Depending on the value type, handle it accordingly
-                    switch ($resultEnumValues.Types[$i]) {
-                        1 { $result = $regInstance.GetStringValue($HiveValue, $rPath, $rKey) }
-                        2 { $result = $regInstance.GetExpandedStringValue($HiveValue, $rPath, $rKey)  }
-                        3 { $result = $regInstance.GetBinaryValue($HiveValue, $rPath, $rKey)  }
-                        4 { $result = $regInstance.GetDWORDValue($HiveValue, $rPath, $rKey)  }
-                        7 { $result = $regInstance.GetMultiStringValue($HiveValue, $rPath, $rKey)  }
-                        default { $result = $false }
-                    }
-                    if ($result.ReturnValue -eq 0){
-                        switch ($resultEnumValues.Types[$i]) {
-                            1 { return $result.sValue }
-                            2 { return $result.sValue  }
-                            3 { $hexString = $result.uValue | ForEach-Object { $_.ToString("X2") }
-                                return $hexString -join " "  }
-                            4 { return $result.uValue  }
-                            7 { return $result.sValue  }
-                            default { return $false }
-                        }
-                    }
-                break
-           }
-        }
-    } else {
-        Write-Debug "Failed to enumerate values. Return Code: $($resultEnumValues.ReturnValue), Key: $($rHive):\$($rPath)\$($rKey)"
-        return $false
     }
 }
