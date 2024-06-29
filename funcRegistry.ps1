@@ -5,6 +5,19 @@
 #         SubVer:  v2.3         #
 #          Jun 24,2024          #
 #################################
+function Dummy-PathComment{
+# Example usage 
+#$customObject = [PSCustomObject]@{
+#    Hive = "HKU"
+#    SID = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+#    Path = "\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
+#    Type = "Dword"
+#    Key = "NoControlPanel"
+#}
+
+#$restoredRegistryPath = Build-RegistryPath -registryObject $customObject
+#$restoredRegistryPath 
+}
 function Split-RegistryPath {
     param($registryPath)
     if ($registryPath.GetType().FullName -eq "System.Collections.Hashtable"){
@@ -132,19 +145,6 @@ Function get-Index{
         }
    })
 }
-function Dummy-PathComment{
-# Example usage 
-#$customObject = [PSCustomObject]@{
-#    Hive = "HKU"
-#    SID = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-#    Path = "\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-#    Type = "Dword"
-#    Key = "NoControlPanel"
-#}
-
-#$restoredRegistryPath = Build-RegistryPath -registryObject $customObject
-#$restoredRegistryPath 
-}
 function get-HiveValue{
     param($rHive)
     switch ($rHive) {
@@ -169,18 +169,6 @@ function Check-Hive {
         # If subkeys are not found, the user's hive is not loaded
         return $false
     }
-}
-function Dummy-HiveComment{
-# Usage example
-#$computerName = "RemoteComputerName"
-#$username = "Username"
-#$userSID = "UserSID"
-
-### Load-RegistryHive -computerName $computerName -username $username -userSID $userSID
-
-# Do some operations with the loaded hive
-
-### Unload-RegistryHive -computerName $computerName -userSID $userSID
 }
 function get-RemoteRegistryKeys{
     param($compName, $rHive, $rPath)
@@ -333,7 +321,6 @@ function get-RemoteRegistryValue {
     $regInstance = $null
     Return $returnVal
 }
-
 function New-RemoteRegistryKey {
     param($compName, $rHive, $rPath)
 
@@ -411,8 +398,18 @@ function ByteToString{
     param($inBytes)
     return ($inBytes | ForEach-Object { [string]$('{0:d2}' -f [int]$_) }) -join " "
 }
+function Dummy-HiveComment{
+# Usage example
+#$computerName = "RemoteComputerName"
+#$username = "Username"
+#$userSID = "UserSID"
 
+### Load-RegistryHive -computerName $computerName -username $username -userSID $userSID
 
+# Do some operations with the loaded hive
+
+### Unload-RegistryHive -computerName $computerName -userSID $userSID
+}
 function Load-RegistryHive {
     param(
         [string]$computerName,
