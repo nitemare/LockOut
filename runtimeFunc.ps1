@@ -457,7 +457,6 @@ function Load_RadioGroup{
         }
     }
 }
-
 function populate-dropdown{
     Param()
 
@@ -606,6 +605,8 @@ function make-UserGroupCheck{
 }
 function make-UserCheck{
     param( $inputX, $inputY, $inputName, $inputTitle, $inputTag, $inputForm = $tabControls.TabPages[0] )
+    #Example:$HexCheck_box = make-UserCheck 30 5 "HexPolicy" "TestHexAdd" "[cp_power]:Hex:Policies{01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00|00}" $tab_0_Controls.TabPages[4]
+   
     $ControlObj = Add-OptionBox $inputY $inputX 150 $inputName $inputTitle $inputForm "check"
     $ControlObj.tag = $inputTag
     $RegControlList.Add($ControlObj)
@@ -774,7 +775,6 @@ function Add-App{
     if ($newApp -ne $null) { Set-RemoteRegistryValue -CompName $compNameBox.Text -rHive "HKU"  -rPath "$($base_path_local)\DisallowRun" -rKey $(Get-NextNumber $ListData) -valueType "String" -valueData $newApp }
     populate-Disallowlist
 }
-
 function delete-App{
     Param($sender = $null)
     
