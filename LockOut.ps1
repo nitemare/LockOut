@@ -27,7 +27,6 @@ Add-Type -AssemblyName PresentationFramework
 # App Launch Sequence Initate #
 ###############################
 
-#$DebugPreference, $VerbosePreference = "Continue", "SilentlyContinue"
 #$DebugPreference, $VerbosePreference, $InformationPreference = "SilentlyContinue", "SilentlyContinue", "SilentlyContinue"
 $DebugPreference, $VerbosePreference, $InformationPreference = "Continue", "Continue", "Continue"
 # Initialize a variable to track user interaction
@@ -121,7 +120,6 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
     $NoWelcomeScreen_box = make-UserCheck 310 5 "NoWelcomeScreen" "Disable the Welcome Screen for new users" "[explorer]:Dword:NoWelcomeScreen" $tab_0_Controls.TabPages[0]
     $NoViewContextMenu_box = make-UserCheck 330 5 "NoViewContextMenu" "Disable Right-Click Menu" "[explorer]:Dword:NoViewContextMenu" $tab_0_Controls.TabPages[0]
 
-
 #################
 # StartMenu Tab #
 #################
@@ -135,9 +133,7 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
     $noLogoff_box = make-UserCheck 150 5 "NoLogoff" "No User Logoff" "[explorer]:Dword:NoLogoff{1|0}" $tab_0_Controls.TabPages[1]
     $noLogoff2_box = make-UserCheck 170 5 "NoLogoff" "No User Logoff [Alternative]" "[explorer]:Dword:StartMenuLogOff{1|0}" $tab_0_Controls.TabPages[1]
     $nosetFolder_box = make-UserCheck 190 5 "NoSetFolders" "No Settings Folder/Icons" "[explorer]:Dword:NoSetFolders{1|0}" $tab_0_Controls.TabPages[1]
-    $clearRecentDocsOnExit_box = make-UserCheck 210 5 "ClearRecentDocsOnExit" "Clear Recent Documents list on Reboot" "[explorer]:Dword:ClearRecentDocsOnExit{1|0}" $tab_0_Controls.TabPages[1]
-    #$noSettingDoc_box = make-UserCheck 150 5 "NoSettingDoc" "no 'Setting'/'Documents'" "[sm_data]:Hex:data{02 00 00 00 83 0d 46 6b 81 7c d9 01 00 00 00 00 43 42 01 00 c2 3c 01 c2 46 01 c5 5a 01 00|0}" $tab_0_Controls.TabPages[1]
-    
+    $clearRecentDocsOnExit_box = make-UserCheck 210 5 "ClearRecentDocsOnExit" "Clear Recent Documents list on Reboot" "[explorer]:Dword:ClearRecentDocsOnExit{1|0}" $tab_0_Controls.TabPages[1] 
 
     $SearchStartMenu = make-UserGroupCheck 230 5 $(pop_StartMenuSearch) $tab_0_Controls.TabPages[1]
     $ExtrasStartMenu = make-UserGroupCheck 250 5 $(pop_StartMenuExtras) $tab_0_Controls.TabPages[1]
@@ -158,7 +154,6 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
     $DisableNotificationCenter_box = make-UserCheck 210 5 "DisableNotificationCenter" "Disable Notification Center [Win11]" "[explorer]:Dword:DisableNotificationCenter" $tab_0_Controls.TabPages[2]
     $NoSystraySystemPromotion_box = make-UserCheck 230 5 "NoSystraySystemPromotion" "Disable System Tray Icon Promotion [Win11]" "[explorer]:Dword:NoSystraySystemPromotion" $tab_0_Controls.TabPages[2]
     
-
 #####################
 #  UserBrowser Tab  #
 #####################
@@ -168,7 +163,6 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
     $noIEFormSugPWAsk_box = make-UserCheck 50 5 "DisableFormSuggestPWAsk" "Disable IE FormSuggest PW Ask" "[int_exp_main]:String:FormSuggest PW Ask{no|yes}" $tab_0_Controls.TabPages[3]
     $noIEFormSugPass2_box = make-UserCheck 70 5 "DisableFormSuggestPasswords2" "Disable IE FormSuggest Passwords (#2)" "[int_exp_cp]:Dword:FormSuggest Passwords{1|0}" $tab_0_Controls.TabPages[3]
     $noIEFormSugPass2_box = make-UserCheck 90 5 "RestrictToList" "Restrict IE Addings to listed" "[policies]\Ext:Dword:RestrictToList{1|0}" $tab_0_Controls.TabPages[3]
-    #$noIEAutoComp_box = make-UserCheck 30 5 "DisableAutoComplete" "Disable IE AutoComplete" "[int_exp]:String:AutoComplete" $tab_0_Controls.TabPages[3]
     
 ##################
 #  Explorer Tab  #
@@ -185,10 +179,7 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
     $HideViewDrives_box = make-UserCheck 170 5 "NoDrives" "Hide All drives in File Explorer" "[explorer]:Dword:NoDrives{03ffffff|0}" $tab_0_Controls.TabPages[4]
     $DisableViewDrives_box = make-UserCheck 190 5 "NoViewOnDrive" "Disables All drives in File Explorer" "[explorer]:Dword:NoViewOnDrive{03ffffff|0}" $tab_0_Controls.TabPages[4]
     $NoInplaceSharings_box = make-UserCheck 210 5 "NoInplaceSharing" "Disables InPlace File Sharing in File Explorer" "[explorer]:Dword:NoInplaceSharing{1|0}" $tab_0_Controls.TabPages[4]
-    #NoNetHood
-
-   #$HexCheck_box = make-UserCheck 30 5 "HexPolicy" "TestHexAdd" "[cp_power]:Hex:Policies{01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00|00}" $tab_0_Controls.TabPages[4]
-    
+     
 ##################
 #  Desktop Tab  #
 ##################
@@ -203,10 +194,8 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
 #####################
 
     $noRunPrg_box = make-UserCheck 10 5 "DisallowRunBox" "Disallow Runing of specific programs" "[explorer]:Dword:DisallowRun" $tab_0_Controls.TabPages[6]
-    
     $DisallowRunList = Make-AppList -y 60 -x 10 -form $tab_0_Controls.TabPages[6]
 
-    
 ###############
 #  Other Tab  #
 ###############
@@ -220,7 +209,6 @@ $RegEntryList = New-Object System.Collections.Generic.List[System.Windows.Forms.
     $SaveZoneInformation_box = make-UserCheck 140 5 "SaveZoneInformation" "Do not preserve zone information in file attachments" "[policies]\Attachments:Dword:SaveZoneInformation{1|2}" $tab_0_Controls.TabPages[7]
     $ScanWithAntiVirus_box = make-UserCheck 160 5 "ScanWithAntiVirus" "Notify antivirus programs when opening attachments" "[policies]\Attachments:Dword:ScanWithAntiVirus{3|1}" $tab_0_Controls.TabPages[7]
 
-   # $SearchTaskbarModeGrp.Controls | ForEach-Object{ $_.GetType().ToString() }
 ##################
 #  End User Tab  #
 ##################
@@ -244,9 +232,7 @@ $dropdown.Add_SelectedIndexChanged({ dropdown-change })
     $BlockEdgeList = Make-SiteList "block" "Edge" $tab_2_Controls.TabPages[0] -x 250
 
     $EdgeHomePage_box = make-TextBox 95 $blockEdgeList 360 "EdgeHomePage" "Homepage" "HKLM:\[edge_pol]:String:NewTabPageLocation" $tab_2_Controls.TabPages[0] -drop 25 -EnableToolTip
-    Write-Warning $EdgeHomePage_box.tag
     $EdgeSideBar_box = make-CheckBox 75 $EdgeHomePage_box 100 "EdgeDisableSidebar" "Disable SideBar" "HKLM:\[edge_pol]:Dword:HubsSidebarEnabled{0|1}" $tab_2_Controls.TabPages[0]
-
     $EdgeDisablePass_box = make-CheckBox 75 $EdgeSideBar_box 100 "PasswordManagerEnabled" "Password Manager Disabled" "HKLM:\[edge_pol]:Dword:PasswordManagerEnabled{0|1}" $tab_2_Controls.TabPages[0] -drop 0
     $EdgeDisablePassReveal_box = make-CheckBox 75 $EdgeDisablePass_box 100 "PasswordRevealEnabled" "Password Reveal Disabled" "HKLM:\[edge_pol]:Dword:PasswordRevealEnabled{0|1}" $tab_2_Controls.TabPages[0] -drop 0
 
@@ -282,21 +268,6 @@ $isUserInteraction = $true
 
 $tabControls.SelectTab(0)
 # Show the form
-#$main.ShowDialog()
 [system.windows.forms.application]::run($main)
 
 New-Event -SourceIdentifier ScriptExit | Out-Null
-
-
-
-function dummy_Debug_Details{
-#write-debug "TestFile"
-#Write-Verbose "Verbose Message"
-#Write-Warning "Warn Message"
-#Write-Error "Error Meessage"
-# Inquire:           [Pause]   Asks whether to continue after each Write-Debug statement
-# Continue:         [Display]  Outputs Write-Debug messages to the console.
-# SilentlyContinue: [Ignore]*  Writes Write-Debug messages but doesn't display them in the console.
-# Stop:              [Fatal]   Stops the script on the first Write-Debug statement encountered.
-
-}
