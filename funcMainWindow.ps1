@@ -71,23 +71,6 @@ Function Setup-Tabs{
     $TabControlList.Add($tabControl)
     return $tabControl
 }
-Function Setup-OldTabs{
-    param($TabNames, $main_form, $buffer = 65, $width = $main_form.Width, $height = $main_form.Height)
-    $tabControl = New-Object System.Windows.Forms.TabControl
-    $tabControl.Location = New-Object System.Drawing.Point(0, $buffer)
-    $tabControl.Size = New-Object System.Drawing.Size($width, ($height - $buffer))  # Adjust the height
-    #$tabControl.Dock = 'Fill'  # Dock the tab control to fill the form
-    #$tabControl.Top = 100
-    foreach($tab in $TabNames){
-        $tabItem = New-Object System.Windows.Forms.TabPage
-        $tabItem.Text = $tab
-        $tabControl.TabPages.Add($tabItem)
-        $tabItem = $null
-    }
-    
-    $main_form.Controls.Add($tabControl)
-    return $tabControl
-}
 function Add-DefaultMenus{
 
     param($main_form)
@@ -179,58 +162,6 @@ Function Confirm-Choise{
         $childControl.Add_MouseClick({ $aboutWin.close() })
     }
     $aboutWin.ShowDialog()
-}
-function Add-DefaultOldMenus{
-
-    param($main_form)
-    $menuMain         = New-Object System.Windows.Forms.MenuStrip
-    $mainToolStrip    = New-Object System.Windows.Forms.ToolStrip
-    $menuFile         = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuReset        = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuExit         = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuHelp         = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuAbout        = New-Object System.Windows.Forms.ToolStripMenuItem
-    #$toolStripReset   = New-Object System.Windows.Forms.ToolStripButton
-    #$toolStripAbout   = New-Object System.Windows.Forms.ToolStripButton
-    #$toolStripExit    = New-Object System.Windows.Forms.ToolStripButton
-
-    # Menu: File
-    $menuFile.Text = "File"
-    
-    # Menu: File -> Reset
-    $menuReset.Text = "Reset"
-    $menuReset.Add_Click({Reset-Script})
-
-    # Menu: File -> Exit
-    $menuExit.Text = "Exit"
-    $menuExit.Add_Click({ExitApp})
-
-    # Menu: Help
-    $menuHelp.Text = "Help"
-
-    # Menu: Help -> About
-    $menuAbout.Text = "About"
-    $menuAbout.Add_Click({AboutApp})
-    
-    #[void]$mainToolStrip.Items.Add($toolStripReset)
-
-    
-    [void]$menuFile.DropDownItems.Add($menuReset)
-    [void]$menuFile.DropDownItems.Add($menuExit)
-    [void]$menuHelp.DropDownItems.Add($menuAbout)
-
-    
-    [void]$menuMain.Items.Add($menuFile)
-    [void]$menuMain.Items.Add($menuHelp)
-
-    
-    $main_form.MainMenuStrip = $menuMain
-
-    # Show Menu Bar
-   # [void]$main_Form.Controls.Add($mainToolStrip)
-    [void]$main_Form.Controls.Add($menuMain)
-    #$main_form.Controls.Add($menuMain)
-
 }
 function Set-PathMode{
     param($mode = $true)
@@ -391,13 +322,4 @@ function Cleanup {
     $tabLocal = $null
     $tabLogin = $null
     Unregister-Event -SourceIdentifier ScriptExit | Out-Null
-}
-function dummy_tutorial{
-    #Add-comboList $TestArr 200 10 70 $main
-    #Add-listBox $TestArr 200 100 10 140 $main
-
-    #Add-comboListBox $TestArr 600 100 10 70 $main
-    #Ask-Question "My Question" 10 70 $Answers $main "check"
-    #Add-ProgressBar 45 510 30 200 $main
-    #$main.ShowDialog()
 }
