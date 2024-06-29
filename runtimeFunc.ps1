@@ -2,9 +2,61 @@
 #           LockOut             #
 #      File: runtimeFunc        #
 #        By Scott Lyon          #
-#         SubVer:  v1.5.1       #
-#          Oct 26,2023          #
+#         SubVer:  v1.8         #
+#          Jun 25,2024          #
 #################################
+function LogoffTarget{
+    $title    = 'Logoff Confirmation'
+    $question = "Are you sure you want to Logoff Remote Computer: ${Script:HostName}?"
+    $choices  = 'YesNo'
+    
+    #$decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+    
+    $decision = [System.Windows.MessageBox]::Show($question, $title, $choices)
+
+    if ($decision -eq "Yes") {
+        Write-Host 'confirmed'
+        Write-Host "Logging Off Hostname: $Script:HostName"
+        logoff console /Server:$Script:HostName
+        
+    } else {
+        Write-Host 'cancelled'
+    }
+}
+function RestartTarget{
+    $title    = 'Reboot Confirmation'
+    $question = "Are you sure you want to Reboot Remote Computer: ${Script:HostName}?"
+    $choices  = 'YesNo'
+
+    #$decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+    $decision = [System.Windows.MessageBox]::Show($question, $title, $choices)
+    
+    if ($decision -eq "Yes") {
+        Write-Host 'confirmed'
+        Write-Host "Rebooting Hostname: $Script:HostName"
+        shutdown /R /M $Script:HostName /T 30
+        
+    } else {
+        Write-Host 'cancelled'
+    }
+}
+function ShutdownTarget{
+    $title    = 'Shutdown Confirmation'
+    $question = "Are you sure you want to Shutdown Remote Computer: ${Script:HostName}?"
+    $choices  = 'YesNo'
+
+    #$decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+    $decision = [System.Windows.MessageBox]::Show($question, $title, $choices)
+    
+    if ($decision -eq "Yes") {
+        Write-Host 'confirmed'
+        Write-Host "Shutting Down Hostname: $Script:HostName"
+        shutdown /S /M $Script:HostName /T 30
+        
+    } else {
+        Write-Host 'cancelled'
+    }
+}
 function pop_StartMenuSearch{ 
     $var = pop_groupCheck -Name "StartMenuSearch" -Label "StartMenu Search" -Path [explorer] -Keys @(
         "Dword:ClearRecentProgForNewUserInStartMenu{1|0}", 
@@ -60,7 +112,9 @@ function pop_MediaButtons{
         "Dword:Btn_Cut{2|0}", 
         "Dword:Btn_Copy{2|0}",
         "Dword:Btn_Paste{2|0}", 
-        "Dword:Btn_Encoding{2|0}")
+        "Dword:Btn_Encoding{2|0}",
+        "Dword:Btn_Stop{2|0}", 
+        "Dword:Btn_Refresh{2|0}")
     #write-debug $var
     return $var
 }
@@ -92,6 +146,7 @@ function pop_NeverSleep{
 function Clear-Panel{
     $isUserInteraction = $false
     foreach($control in $RegControlList){
+        if ($control.GetType().ToString() -eq "System.Windows.Forms.GroupBox"){ clear_RadioGroup }
         $control.Enabled = $false
     }    
     foreach($check in $RegCheckList){
@@ -103,6 +158,7 @@ function Pull-Host{
     
     $isUserInteraction = $false
     $compNameBox.Tag = $compNameBox.Text
+
     if(Ping-Computer -ComputerName $compNameBox.Text){
         $progBar.visible = $true
         Clear-Panel
@@ -111,14 +167,23 @@ function Pull-Host{
         populate-browserlists
         populate-host
         $compNameBox.BackColor = [System.Drawing.Color]::LightGreen
+        $host_Details = Get-Hostname $compNameBox.Text
+        $host_name.Text = $host_Details.Hostname
+        $host_IP.Text = $host_Details.IP
+        $host_Model.Text = $host_Details.Model
+
         Set-ProgressBar "HostLoad" 95 $main
         Start-Sleep -Milliseconds 500 | Set-ProgressBar "HostLoad" 100 $main
         $progBar.visible = $false
+        if ($compNameBox.Text -notin ("Localhost", "127.0.0.1", ".")){
+            $Script:menuTarget.Enabled = $true
+            }
+        $Script:HostName = $compNameBox.Text
     }else{
         $compNameBox.BackColor = [System.Drawing.Color]::LightPink
         Clear-Panel
     }
-    
+    $dropdown.BackColor = [System.Drawing.SystemColors]::Window
     $isUserInteraction = $true
 }
 function Load-TextBox{
@@ -315,6 +380,84 @@ function populate-list{
     $DataList.SelectedIndex = -1
 
 }
+function populate-Disallowlist{
+  Param($sender = $null)
+
+    $DataList = Get-Variable -Name ("DisallowRunList") -ValueOnly
+    $selectedProfile = $dropdown.SelectedItem
+    $sid = $selectedProfile["SID"]
+    $base_path_local = $(get-path -path "explorer" -sid $sid).substring(5)
+    
+    # Create a DataTable
+    $DataTable = New-Object System.Data.DataTable
+    $computerName = $CompNameBox.Text
+
+    #Define Columns
+    $DataTable.Columns.Add($(New-Object system.Data.DataColumn "App",([string])))
+    $DataTable.Columns.Add($(New-Object system.Data.DataColumn "AppNum",([Int])))
+    $DataTable.Columns.Add($(New-Object system.Data.DataColumn "DisplayApp",([String])))
+    
+    #$dataTable.Rows.Add([DBNull]::Value, "")
+    # Populate the DataTable with non-system user profiles
+    
+    $ListData = get-RemoteRegistryEntries $computerName "HKU" "$($base_path_local)\DisallowRun"
+   # Set-ProgressBar "HostLoad" 5 $main "+"
+    foreach ($appNum in $ListData){
+        $datarow = $Datatable.NewRow()
+        $datarow.AppNum = $appNum
+        $app = $(get-RemoteRegistryValue $computerName "HKU" "$($base_path_local)\DisallowRun" $AppNum)
+        if ($([bool]$app)){
+            $datarow.App = $app
+            $datarow.DisplayApp = "$($appNum): $app"
+            $DataTable.Rows.Add($datarow)
+        }
+        $app = ""
+        #Set-ProgressBar "HostLoad" $(15 / $DataList.length)  $main "+"
+        $datarow = $null
+    }
+    #write-debug "DataListName: $($DataList.Name)"
+    # Define value/display members, Set the data source, and cleaar the index
+    #$dropdown.Items.Clear()
+    #write-debug "Name: $($(Get-Variable -Name ("allow" + $base_brow + "List")).name)"
+    $DataTable.DefaultView.Sort = "AppNum ASC"
+    $DataList.DisplayMember = "DisplayApp"
+    $DataList.ValueMember = "AppNum"
+    $DataList.DataSource = $DataTable # $(Fix-DataTable $sortedList)
+    #$DataList.Sorted = $true
+    $DataList.SelectedIndex = -1
+
+}
+function clear_RadioGroup{
+    param($radioGroup)
+    $radioGroup = $SearchTaskbarModeGrp
+   
+    $radioGroup.Controls | ForEach-Object{
+        if ($_.GetType().ToString() -eq "System.Windows.Forms.RadioButton"){
+            $_.Checked = $false
+        }
+    }
+}
+function Load_RadioGroup{
+    param($radioGroup)
+    $radioGroup = $SearchTaskbarModeGrp
+    #$SearchTaskbarModeGrp
+    $rPaths = Split-RegistryPath $radioGroup.tag
+    $computerName = $CompNameBox.Text
+    $selectedProfile = $dropdown.SelectedItem
+    $sid = $selectedProfile["SID"]
+    #$base_path_local = $(get-path -path "explorer" -sid $sid).substring(5)
+    $setVal = Get-RemoteRegistryValue -compName $computerName -rHive $rPaths.Hive -rPath "$($sid)\$($rPaths.Path)" -rKey $rPaths.Key
+    $radioGroup.Controls | ForEach-Object{
+        if ($_.GetType().ToString() -eq "System.Windows.Forms.RadioButton"){
+            if ($_.Tag -eq $setVal){
+                $_.Checked = $true
+            }else{
+                $_.Checked = $false
+            }
+        }
+    }
+}
+
 function populate-dropdown{
     Param()
 
@@ -337,7 +480,8 @@ function populate-dropdown{
             $datarow.SID = $sid
             $userName = $(get-RemoteRegistryValue $computerName "HKLM" "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sid" "ProfileImagePath")
             if ($([bool]$userName)){
-                $datarow.username = $userName -replace ".*\\"
+                $userName = $userName -replace ".*\\"
+                $datarow.username = "$userName$(" "*(15 - $userName.length))$sid"
                 $datatable.Rows.Add($datarow)
             }
             $userName = ""
@@ -352,6 +496,7 @@ function populate-dropdown{
     $dropdown.DisplayMember = "Username"
     $dropdown.ValueMember = "SID"
     $dropdown.DataSource = $dataTable
+    #$Script:CurrentRegTable = $dataTab
     $dropdown.SelectedIndex = -1
 
 }
@@ -361,27 +506,44 @@ function checkState-AlterUser{
         $selectedProfile = $dropdown.SelectedItem
         $sid = $selectedProfile["SID"]
         $computerName = $CompNameBox.Text
-        #write-host "incontrol: $($inControl.Tag)"
+        write-host "incontrol: $($inControl.Tag)"
         #write-debug ($inControl.Tag.substring(0,11) -ne "##KeyList##")
         #write-debug $inControl.Tag.substring(0,11)
         if ($inControl.Tag.substring(0,11) -eq "##KeyList##"){
             $arrList = $(convertFrom-Json $inControl.Tag.substring(12))
-            #write-debug $arrList
+            write-debug $arrList
             $iCount = 0
             $arrList | ForEach-Object{
-                #Write-debug $_
+                Write-debug $_
                 $regProps = Split-RegistryPath $_
             #$regProps = Split-RegistryPath $inControl.Tag
                 $setVal = if ($inControl.Checked) { $regProps.TrueValue }else{ $regProps.FalseValue }
                 Set-RemoteRegistryValue -compName $CompNameBox.Text -rHive $regProps.Hive -rPath "$($sid)\$($regProps.Path)" -rKey $regProps.Key -valueType $regProps.Type -valueData $setVal
             }
         }elseif ($inControl.Tag.substring(0,11) -ne "##KeyList##"){
-           #write-Debug "incontrol: $($inControl.Tag)"
+           write-Debug "incontrol: $($inControl.Tag)"
             $regProps = Split-RegistryPath $inControl.Tag
             $setVal = if ($inControl.Checked) { $regProps.TrueValue }else{ $regProps.FalseValue }
-           #write-Debug "$($sid)\$($regProps.Path):$($regProps.Key)"
+           write-Debug "$($sid)\$($regProps.Path):$($regProps.Key):SetValue=$setVal"
             Set-RemoteRegistryValue -compName $CompNameBox.Text -rHive $regProps.Hive -rPath "$($sid)\$($regProps.Path)" -rKey $regProps.Key -valueType $regProps.Type -valueData $setVal
         }
+    }
+}
+function OptState-AlterUser{
+    param($inControl, $inValue)
+  if ($isUserInteraction) {
+        $selectedProfile = $dropdown.SelectedItem
+        $sid = $selectedProfile["SID"]
+        $computerName = $CompNameBox.Text
+        write-host "incontrol: $($inControl.Tag)"
+        #write-debug ($inControl.Tag.substring(0,11) -ne "##KeyList##")
+        #write-debug $inControl.Tag.substring(0,11)
+
+           write-Debug "incontrol: $($inControl.Tag)"
+            $regProps = Split-RegistryPath $inControl.Tag
+            $setVal = $inValue #  if ($inControl.Checked) { $regProps.TrueValue }else{ $regProps.FalseValue }
+           write-Debug "$($sid)\$($regProps.Path):$($regProps.Key):SetValue=$setVal"
+            Set-RemoteRegistryValue -compName $CompNameBox.Text -rHive $regProps.Hive -rPath "$($sid)\$($regProps.Path)" -rKey $regProps.Key -valueType $regProps.Type -valueData $setVal
     }
 }
 function checkState-Alter{
@@ -449,17 +611,43 @@ function make-UserCheck{
     $RegControlList.Add($ControlObj)
     $RegCheckList.Add($ControlObj)
     $RegEntryList.Add($ControlObj.Tag)
+    $regTag = Split-RegistryPath  $inputTag
+    Add-ToolTip $ControlObj "$($regTag.Hive)\$($regTag.SID)\$($regTag.Path):$($regTag.Key)"
     $ControlObj.Add_CheckStateChanged({ param($sender, $eventArgs) checkState-AlterUser $sender })
     return $ControlObj
 }
+function make-RadioGroup{
+    param($groupTitle, $regpath, $x, $y, $height, $width, $buttonArr, $main_form)
+
+    #Button Array, each element contains subarray with: ("BoxName", "TextFeild", Tag, X, Y, Width)
+    $RadioGrp = New-Object System.Windows.Forms.GroupBox
+    $RadioGrp.Location  = New-Object System.Drawing.Point($x, $y)
+    $RadioGrp.Text = $groupTitle # "Taskbar Search Mode"
+    $RadioGrp.Enabled = $false
+    $RadioGrp.Tag = $regpath # "[searchPol]:Dword:SearchboxTaskbarMode"
+    $RadioGrp.Font = New-Object System.Drawing.Font("Calibri",9,[System.Drawing.FontStyle]::Regular)
+    $RadioGrp.Size = New-Object System.Drawing.Size($width,$height)
+    $RegControlList.Add($RadioGrp)
+    $buttonArr | ForEach-Object{
+        $OptBox = Add-OptionBox -X $_[3] -y $_[4] -width $_[5] -boxName $_[0] -TextField $_[1] -main_form $RadioGrp -checkRadio "radio"
+        $OptBox.Tag = $_[2]
+        $OptBox.Add_CheckedChanged({ OptState-AlterUser -inControl $this.Parent -InValue $this.Tag })
+
+    }
+    $main_form.Controls.Add($RadioGrp)
+    return $RadioGrp
+
+
+}
 function Load-BulkCheckbox{
     param($inputControl, $inc = 1, $allOrNothing = $false)
-    if ($inputControl.Tag.substring(0,11) -eq "##KeyList##"){
-        if ($inputControl.Tag.substring(11,12) -eq "!"){ $allOrNothing = $true } Else { $allOrNothing = $false }
-        $arrList = $(convertFrom-Json $inputControl.Tag.substring(12))
-        $ControlCount = 0
-        $iCount = 0
-        $arrList | ForEach-Object{
+    if ($inputControl.GetType().ToString() -eq "System.Windows.Forms.CheckBox"){
+        if ($inputControl.Tag.substring(0,11) -eq "##KeyList##"){
+            if ($inputControl.Tag.substring(11,12) -eq "!"){ $allOrNothing = $true } Else { $allOrNothing = $false }
+            $arrList = $(convertFrom-Json $inputControl.Tag.substring(12))
+            $ControlCount = 0
+            $iCount = 0
+                                            $arrList | ForEach-Object{
             $regProps = Split-RegistryPath $_
             $Control = get-RemoteRegistryValue $CompNameBox.Text -rHive $regProps.Hive -rPath "$($sid)\$($regProps.Path)" -rKey $regProps.Key
             if ($Control -eq $regProps.TrueValue){
@@ -469,18 +657,19 @@ function Load-BulkCheckbox{
             $iCount++
         }
         
-        if ($ControlCount -eq $iCount){
+                    if ($ControlCount -eq $iCount){
             $inputControl.checked = $true
-        }elseif ($ControlCount -eq 0 -or $allOrNothing -eq $true){
+                }elseif ($ControlCount -eq 0 -or $allOrNothing -eq $true){
             $inputControl.checked = $false
-        }else{
+                }else{
             $inputControl.CheckState = [System.Windows.Forms.CheckState]::Indeterminate
         }
-    }else{
-        $regProps = Split-RegistryPath $inputControl.Tag
-        $Control = get-RemoteRegistryValue $CompNameBox.Text -rHive $regProps.Hive -rPath "$($sid)\$($regProps.Path)" -rKey $regProps.Key
-        if ($Control -eq $regProps.TrueValue){
+        }else{
+            $regProps = Split-RegistryPath $inputControl.Tag
+            $Control = get-RemoteRegistryValue $CompNameBox.Text -rHive $regProps.Hive -rPath "$($sid)\$($regProps.Path)" -rKey $regProps.Key
+                    if ($Control -eq $regProps.TrueValue){
             $inputControl.checked = $true
+        }
         }
     }
     $inputControl.Enabled = $true
@@ -524,7 +713,10 @@ function Make-SiteList{
     $AddButton = Add-Button -text "Add" -width $($List.Width / 3) -height 20 -x $List.Left -y $($List.Top + $List.Height) -main_form $form
     $RefreshButton = Add-Button -text "Refresh" -width $($List.Width / 3) -height 20 -x $($AddButton.Left + $AddButton.Width) -y $($List.Top + $List.Height) -main_form $form
     $RemoveButton = Add-Button -text "Remove" -width $($List.Width / 3) -height 20 -x $($RefreshButton.Left + $RefreshButton.Width) -y $($List.Top + $List.Height) -main_form $form
+    
+    $base_path_local = if ("E","Edge" -contains $browser){ get-path -path 'edge_pol' }else{ get-path -path 'chrome_pol' }
     $Label = Add-Label -text "URL$($AorB)List" -x $($List.left + 35) -y 10 -font_size 12 -width 150 -main_form $form
+    Add-ToolTip $Label "HKLM\$base_path_local\URL$($AorB)List"
     $RefreshButton.tag = $tags
     $RemoveButton.tag = $tags
     $AddButton.tag = $tags
@@ -533,13 +725,84 @@ function Make-SiteList{
     $AddButton.Add_Click({     Add-Site -sender $this      })
     return $List
 }
+Function FormatAndAdd-ToolTip{
+    param($inputObj, $inputTag = $null)
+    if ($inputTag -eq $null){ $inputObj.Tag }
+    $regTag = Split-RegistryPath $inputTag 
+    if ($regTag.SID -ne $false){
+        Add-ToolTip $inputObj "$($regTag.Hive)\$($regTag.SID)\$($regTag.Path):$($regTag.Key)"
+    }else{
+        Add-ToolTip $inputObj "$($regTag.Hive)\$($regTag.Path):$($regTag.Key)"
+    }
+}
+function Make-AppList{
+    Param($form, $width = 450, $height = 200, $x = 10, $y = 30)
+    #$tags = "$AorB|$browser"
+    $List = Make-listBox -width $width -height $height -x $x -y $y -main_form $form
+    $AddButton = Add-Button -text "Add" -width $($List.Width / 3) -height 20 -x $List.Left -y $($List.Top + $List.Height) -main_form $form
+    $RefreshButton = Add-Button -text "Refresh" -width $($List.Width / 3) -height 20 -x $($AddButton.Left + $AddButton.Width) -y $($List.Top + $List.Height) -main_form $form
+    $RemoveButton = Add-Button -text "Remove" -width $($List.Width / 3) -height 20 -x $($RefreshButton.Left + $RefreshButton.Width) -y $($List.Top + $List.Height) -main_form $form
+    
+    $RegControlList.Add($List)
+    $RegControlList.Add($AddButton)
+    $RegControlList.Add($RefreshButton)
+    $RegControlList.Add($RemoveButton)
+    
+    $base_path_local = $(get-path -path "explorer").substring(5)
+    $Label = Add-Label -text "DisallowRun List" -x $(($width / 2) - 75) -y $($y - 20) -font_size 12 -width 200 -main_form $form
+    Add-ToolTip $Label "HKU\$base_path_local\DisallowRun"
+   # $RefreshButton.tag = $tags
+   # $RemoveButton.tag = $tags
+   # $AddButton.tag = $tags
+    $RefreshButton.Add_Click({ populate-Disallowlist -sender $this })
+    $RemoveButton.Add_Click({  delete-app -sender $this   })
+    $AddButton.Add_Click({     Add-app -sender $this      })
+    return $List
+}
+function Add-App{
+    
+    Param($sender = $null)
+    
+       # $regProps = Split-RegistryPath $inputControl.Tag
+      #  Write-Host -foregroundcolor Red $regProps.Path
+    $selectedProfile = $dropdown.SelectedItem
+    $sid = $selectedProfile["SID"]
+    $DataList = Get-Variable -Name ("DisallowRunList") -ValueOnly
+    $base_path_local = $(get-path -path "explorer" -sid $sid).substring(5)
+    $ListData = Get-RemoteRegistryEntries -CompName $compNameBox.Text -rHive "HKU"  -rPath "$($base_path_local)\DisallowRun"
+    $newApp = Show-InputBox -Prompt "Enter App.exe to Add:" -Title "Enter App"
+    if ($newApp -ne $null) { Set-RemoteRegistryValue -CompName $compNameBox.Text -rHive "HKU"  -rPath "$($base_path_local)\DisallowRun" -rKey $(Get-NextNumber $ListData) -valueType "String" -valueData $newApp }
+    populate-Disallowlist
+}
+
+function delete-App{
+    Param($sender = $null)
+    
+    $selectedProfile = $dropdown.SelectedItem
+    $sid = $selectedProfile["SID"]
+    $DataList = Get-Variable -Name ("DisallowRunList") -ValueOnly
+    $base_path_local = $(get-path -path "explorer" -sid $sid).substring(5)
+    #$selectedRow = [System.Data.DataRowView]$allowList.SelectedItem 
+    write-host -ForegroundColor red $DataList.SelectedIndex
+    if ($DataList.SelectedIndex -ne -1){
+        Delete-RemoteRegistryValue -CompName $compNameBox.Text -rHive "HKU"  -rPath "$($base_path_local)\DisallowRun" -rValue $DataList.SelectedValue
+        populate-Disallowlist
+    }
+}
 function make-TextBox{
-    param($x, $y, $width, $name, $label, $Key, $form, $passwordChar = $null, $drop = 5)
+    param($x, $y, $width, $name, $label, $Key, $form, $passwordChar = $null, $drop = 5, [switch]$EnableToolTip)
     
     if ($(Get-ParentType $y) -eq "System.Windows.Forms"){
         $y = $($y.top + $y.height + $drop)
     }
-    $Text_box = Add-TextBox $x $y $width $name $form -prompt $label 
+    if ($EnableToolTip -eq $true){
+        $Text_box = Add-TextBox $x $y $width $name $form -prompt $label -EnableToolTip
+        $TextBoxLabel = $Text_box[0]
+        $Text_box = $Text_box[1]
+        FormatAndAdd-ToolTip -inputObj $TextBoxLabel -inputTag $Key
+    }else{
+        $Text_box = Add-TextBox $x $y $width $name $form -prompt $label
+    }
     $Text_box.tag = @{
         0 = $key 
         1 = ""
@@ -558,16 +821,20 @@ function make-CheckBox{
     }
     $Check_box = Add-OptionBox $x $y $width $name $label $form "Check"
     $Check_box.tag = $key 
+    $regTag = Split-RegistryPath  $key
+    Add-ToolTip $Check_box "$($regTag.Hive)\$($regTag.Path):$($regTag.Key)"
     $Check_box.Add_CheckStateChanged({ param($sender, $eventArgs) checkState-Alter $sender })
     return $Check_box
 }
 function dropdown-change{
+        $dropdown.Tag = [System.Drawing.Color]::AntiqueWhite
  write-debug "Dropdown index changed, Interaction: $isUserInteraction"
     if ($isUserInteraction) {
         $isUserInteraction = $false
         $selectedProfile = $dropdown.SelectedItem
         #write-debug "Host: $($selectedProfile.value)"
         if ([bool]$selectedProfile){
+            $dropdown.Refresh()
             $sid = $selectedProfile["SID"]
             if ($sid.length -gt 5){
                 $computerName = $CompNameBox.Text
@@ -576,10 +843,15 @@ function dropdown-change{
                 $progBar.visible = $true
                 Set-ProgressBar "HostLoad" 5 $main
                 if ($isHiveLoaded -and $isUserInteraction -eq $false) {
-                    foreach($control in $RegControlList){ Load-BulkCheckbox $control $inc}  
+                    foreach($control in $RegControlList){ Load-BulkCheckbox $control $inc}
+                    populate-Disallowlist 
+                    Load_RadioGroup 
+                    $dropdown.Tag = [System.Drawing.Color]::LightGreen
                 }else{
                     Clear-Panel
+                    $dropdown.Tag = [System.Drawing.Color]::LightPink
                 }
+                $dropdown.Refresh()
                 Set-ProgressBar "HostLoad" 95 $main
                 Start-Sleep -Milliseconds 500 | Set-ProgressBar "HostLoad" 100 $main
                 $progBar.visible = $false
