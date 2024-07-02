@@ -1,9 +1,9 @@
-﻿#################################
+#################################
 #           LockOut             #
 #      File: funcCommon         #
 #        By Scott Lyon          #
-#         SubVer:  v1.1         #
-#          Oct 26,2023          #
+#         SubVer:  v1.2         #
+#          Feb 09,2024          #
 #################################
 function Ping-Computer {
     param (
@@ -23,6 +23,27 @@ function Ping-Computer {
         Write-Information "An error occurred while pinging $($ComputerName): $($_.Exception.Message)"
         return $false
     }
+}
+function Get-Hostname{
+    param($hostname)
+    try{
+        $pingResult = Get-WmiObject -Class Win32_PingStatus -Filter "Address='$hostname'"
+        if ($pingResult.StatusCode -eq 0) {
+            $HostDetails = (Get-WmiObject win32_computersystem -ComputerName $hostname -ErrorAction Stop | Select-Object Name,Domain,Username,Manufacturer,Model)
+            Add-Member -InputObject $HostDetails -MemberType NoteProperty -Name "IP" -Value $pingResult.ProtocolAddress
+            Add-Member -InputObject $HostDetails -MemberType AliasProperty -Name "Hostname" -Value "Name"
+        } else {
+            Write-Debug "$ComputerName did not respond to ping."
+            return $false
+        }
+    }catch{
+        if ($_ -eq "The RPC server is unavailable."){
+            return $false
+        }else{
+            Write-Error $_
+        }
+    }
+    return $HostDetails
 }
 function Find-Control{
     param($UID, $controls = $main.controls)

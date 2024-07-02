@@ -1,9 +1,9 @@
-﻿#################################
+#################################
 #           LockOut             #
 #      File: funcForms          #
 #        By Scott Lyon          #
-#         SubVer:  v1.1         #
-#          Oct 17,2023          #
+#         SubVer:  v1.3         #
+#          Jun 25,2024          #
 #################################
 Function Add-comboList {
     Param($inList, $width, $height, $x, $y, $main_form)
@@ -19,13 +19,55 @@ Function Add-comboList {
     $main_form.Controls.Add($comboBox)
 }
 Function Make-comboList {
-    Param($width, $height, $x, $y, $main_form)
+    Param($width, $height, $x, $y, $main_form, [switch]$mono)
 
     $comboBox = New-Object System.Windows.Forms.ComboBox
     $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $comboBox.Tag = [System.Drawing.Color]::AntiqueWhite
+    $comboBox.DrawMode = [System.Windows.Forms.DrawMode]::OwnerDrawFixed
+    $combobox.Add_DrawItem({
+        param(
+        [System.Object] $sender, 
+        [System.Windows.Forms.DrawItemEventArgs] $e
+        )
+        If ($Sender.Items.Count -eq 0) {return}
+        #write-warning $sender.tag
+        Try {
+            if ($e.Index -ne -1){
+                $lbItem=$Sender.Items[$e.Index]
+                $lbItemLabel = $lbItem['Username']
+            }else{
+                $lbItemLabel =  ""
+            }
+           $textColor = [System.Drawing.Color]::Black
+           if(($e.State -band [System.Windows.Forms.DrawItemState]::Selected) -eq [System.Windows.Forms.DrawItemState]::Selected -and $e.State -match "ComboBoxEdit"){ 
+                 $backgroundColor = $sender.tag #[System.Drawing.Color]::LightGreen
+            }else{
+                 $backgroundColor = [System.Drawing.Color]::white
+            }
+            $BackgroundColorBrush = New-Object System.Drawing.SolidBrush($backgroundColor)            
+            $TextColourBrush = New-Object System.Drawing.SolidBrush($textColor)
+            $e.Graphics.TextRenderingHint = 'AntiAlias'
+            $font = $e.Font
+            $e.Graphics.FillRectangle($BackgroundColorBrush, $e.Bounds)
+            $e.Graphics.DrawString($lbItemLabel, $font, $TextColourBrush, (new-object System.Drawing.PointF($e.Bounds.X, $e.Bounds.Y)))
+            $e.DrawFocusRectangle()
+        }
+        Catch {
+            write-host $_.Exception
+        }
+        Finally {
+        $TextColourBrush.Dispose()
+        $BackgroundColorBrush.Dispose()
+        }
+    })
+    
+    $comboBox.DisplayMember = "Username"
+    $comboBox.ValueMember = "SID"
     $comboBox.Width = $width
     $comboBox.Height = $height
     $comboBox = Add-Ident -obj $comboBox
+    if ($mono -eq $true) { $comboBox.Font = New-Object System.Drawing.Font("Lucida Console",8) }
     $comboBox.Location  = New-Object System.Drawing.Point($x,$y)
     $main_form.Controls.Add($comboBox)
     return $comboBox
@@ -85,7 +127,7 @@ function Add-Optionbox{
     $RadioBtn.Name = $boxName
     $RadioBtn = Add-Ident -obj $RadioBtn -uniqueID $boxName
     $RadioBtn.Location  = New-Object System.Drawing.Point(($x),$y)
-    $RadioBtn.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Bold)
+    $RadioBtn.Font = New-Object System.Drawing.Font("Lucida Console",10,[System.Drawing.FontStyle]::Bold)
     $RadioBtn.AutoSize = $true
     $main_form.Controls.Add($RadioBtn)
     return $RadioBtn
@@ -106,14 +148,44 @@ function Add-Label{
     return $labelTemp
     $labelTemp = $null
 }
+function Add-Text{
+    param($text, $label, $x, $y, $font_size, $width, $main_form) 
+    if ($label -ne ""){  
+        $TextLabel = New-Object System.Windows.Forms.Label
+        $TextLabel.Text = "$($label):"
+        $TextLabel.BackColor = [System.Drawing.Color]::Transparent
+        $TextLabel.width = $($TextLabel.Text.length * $($font_size))
+        $TextLabel.Height = $font_size + 3
+        $TextLabel.Location  = New-Object System.Drawing.Point($($x - $($TextLabel.Text.length * $($font_size))), $y)
+        $TextLabel.Font = New-Object System.Drawing.Font("Lucida Console",$font_size) #,[System.Drawing.FontStyle]::Bold)
+        $TextLabel.TextAlign = "BottomRight"
+        $main_form.Controls.Add($TextLabel)
+        $TextLabel.BringToFront()
+    }
+    $labelTemp = New-Object System.Windows.Forms.Label
+    $labelTemp.Text = $text
+    $labelTemp.width = $width
+    $labelTemp.Height = $font_size + 3
+    $labelTemp.BackColor = [System.Drawing.Color]::Transparent
+    $labelTemp = Add-Ident -obj $labelTemp
+    $labelTemp.Location  = New-Object System.Drawing.Point($x, $y)
+    $labelTemp.Font = New-Object System.Drawing.Font("Lucida Console",$font_size) #,[System.Drawing.FontStyle]::Bold)
+    # $Label.AutoSize = $true
+    $labelTemp.TextAlign = "BottomLeft"
+    $main_form.Controls.Add($labelTemp)
+    $labelTemp.BringToFront()
+    #$labelTemp.BringToFront()
+    return $labelTemp
+    $labelTemp = $null
+}
 function Add-TextBox{
-    param($X, $y, $width, $boxName, $main_form, $Default = "", $prompt = "") 
+    param($X, $y, $width, $boxName, $main_form, $Default = "", $prompt = "", $font_size = 12, [switch]$EnableToolTip) 
     if ($prompt -ne ""){  
         $Label = New-Object System.Windows.Forms.Label
         $Label.Text = $prompt
-        $label.width = $($prompt.length * 11)
-        $Label.Location  = New-Object System.Drawing.Point($($x - $($prompt.length * 11)), $y)
-        $Label.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Bold)
+        $label.width = $($prompt.length * $($font_size))
+        $Label.Location  = New-Object System.Drawing.Point($($x - $($prompt.length * $($font_size))), $y)
+        $Label.Font = New-Object System.Drawing.Font("Lucida Console",$font_size,[System.Drawing.FontStyle]::Bold)
        # $Label.AutoSize = $true
         $Label.TextAlign = "MiddleRight"
         $main_form.Controls.Add($Label)
@@ -130,7 +202,12 @@ function Add-TextBox{
     $TextBox.AutoSize = $true
     $main_form.Controls.Add($TextBox)
     $textBox.BringToFront()
-    return $TextBox
+    if ($EnableToolTip -eq $true){
+        Write-Warning "ToolTip Enabled"
+        return ($label,$TextBox)
+    }else{
+        return $TextBox
+    }
 }
 function Add-Ident {
     param($obj, $uniqueID = $null)

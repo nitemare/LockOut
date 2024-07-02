@@ -1,9 +1,9 @@
-﻿#################################
+#################################
 #           LockOut             #
 #      File: funcMainWindow     #
 #        By Scott Lyon          #
-#         SubVer:  v1.3         #
-#          Oct 26,2023          #
+#         SubVer:  v1.5         #
+#          Feb 09,2024          #
 #################################
 Function Create-Window{
     param($height=400, $width=600, $title = "New Window", $bannerTxt = "Default", $StartPosition = "CenterScreen")
@@ -25,11 +25,11 @@ Function Create-Window{
             Size-Tabs $TabControl
              }
     })
-    $Banner = New-Object System.Windows.Forms.Label
-    $Banner.Text = $bannerTxt
-    $Banner.Location  = New-Object System.Drawing.Point(10,30)
-    $Banner.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Bold)
-    $Banner.AutoSize = $true
+    #$Banner = New-Object System.Windows.Forms.Label
+    #$Banner.Text = $bannerTxt
+    #$Banner.Location  = New-Object System.Drawing.Point(10,30)
+    #$Banner.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Bold)
+    #$Banner.AutoSize = $true
     $main_form.Controls.Add($Banner)
     return  $main_form
 }
@@ -71,23 +71,6 @@ Function Setup-Tabs{
     $TabControlList.Add($tabControl)
     return $tabControl
 }
-Function Setup-OldTabs{
-    param($TabNames, $main_form, $buffer = 65, $width = $main_form.Width, $height = $main_form.Height)
-    $tabControl = New-Object System.Windows.Forms.TabControl
-    $tabControl.Location = New-Object System.Drawing.Point(0, $buffer)
-    $tabControl.Size = New-Object System.Drawing.Size($width, ($height - $buffer))  # Adjust the height
-    #$tabControl.Dock = 'Fill'  # Dock the tab control to fill the form
-    #$tabControl.Top = 100
-    foreach($tab in $TabNames){
-        $tabItem = New-Object System.Windows.Forms.TabPage
-        $tabItem.Text = $tab
-        $tabControl.TabPages.Add($tabItem)
-        $tabItem = $null
-    }
-    
-    $main_form.Controls.Add($tabControl)
-    return $tabControl
-}
 function Add-DefaultMenus{
 
     param($main_form)
@@ -101,6 +84,11 @@ function Add-DefaultMenus{
                                                              Checked = $($BasePathMode -eq $false)}
     $Script:menuSpoof  = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "Spoof"
                                                              Checked = $BasePathMode }
+    $Script:menuTarget   = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "Remote"  }
+    $Script:menuTarget.Enabled = $false
+    $menuLogoff  = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "Logoff" }
+    $menuRestart  = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "Restart" }
+    $menuShutdown  = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "Shutdown" }
     $menuHelp   = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "Help"  }
     $menuAbout  = [System.Windows.Forms.ToolStripMenuItem]@{ Text = "About" }
 
@@ -109,70 +97,71 @@ function Add-DefaultMenus{
     $Script:menuNormal.Add_Click({Set-PathMode $false})
     $Script:menuSpoof.Add_Click({Set-PathMode $true})
     $menuAbout.Add_Click({AboutApp})
+    $menuLogoff.Add_Click({LogoffTarget})
+    $menuRestart.Add_Click({RestartTarget})
+    $menuShutdown.Add_Click({ShutdownTarget})
 
     [void]$menuFile.DropDownItems.Add($menuReset)
     [void]$menuFile.DropDownItems.Add($menuExit)
     [void]$menuMode.DropDownItems.Add($Script:menuNormal)
     [void]$menuMode.DropDownItems.Add($Script:menuSpoof)
+    [void]$Script:menuTarget.DropDownItems.Add($menuLogoff)
+    [void]$Script:menuTarget.DropDownItems.Add($menuRestart)
+    [void]$Script:menuTarget.DropDownItems.Add($menuShutdown)
     [void]$menuHelp.DropDownItems.Add($menuAbout)
 
     [void]$menuMain.Items.Add($menuFile)
     [void]$menuMain.Items.Add($menuMode)
+    [void]$menuMain.Items.Add($Script:menuTarget)
     [void]$menuMain.Items.Add($menuHelp)
     $main_form.MainMenuStrip = $menuMain
     [void]$main_Form.Controls.Add($menuMain)
 }
-function Add-DefaultOldMenus{
+Function Confirm-Choise{
 
-    param($main_form)
-    $menuMain         = New-Object System.Windows.Forms.MenuStrip
-    $mainToolStrip    = New-Object System.Windows.Forms.ToolStrip
-    $menuFile         = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuReset        = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuExit         = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuHelp         = New-Object System.Windows.Forms.ToolStripMenuItem
-    $menuAbout        = New-Object System.Windows.Forms.ToolStripMenuItem
-    #$toolStripReset   = New-Object System.Windows.Forms.ToolStripButton
-    #$toolStripAbout   = New-Object System.Windows.Forms.ToolStripButton
-    #$toolStripExit    = New-Object System.Windows.Forms.ToolStripButton
-
-    # Menu: File
-    $menuFile.Text = "File"
-    
-    # Menu: File -> Reset
-    $menuReset.Text = "Reset"
-    $menuReset.Add_Click({Reset-Script})
-
-    # Menu: File -> Exit
-    $menuExit.Text = "Exit"
-    $menuExit.Add_Click({ExitApp})
-
-    # Menu: Help
-    $menuHelp.Text = "Help"
-
-    # Menu: Help -> About
-    $menuAbout.Text = "About"
-    $menuAbout.Add_Click({AboutApp})
-    
-    #[void]$mainToolStrip.Items.Add($toolStripReset)
-
-    
-    [void]$menuFile.DropDownItems.Add($menuReset)
-    [void]$menuFile.DropDownItems.Add($menuExit)
-    [void]$menuHelp.DropDownItems.Add($menuAbout)
-
-    
-    [void]$menuMain.Items.Add($menuFile)
-    [void]$menuMain.Items.Add($menuHelp)
-
-    
-    $main_form.MainMenuStrip = $menuMain
-
-    # Show Menu Bar
-   # [void]$main_Form.Controls.Add($mainToolStrip)
-    [void]$main_Form.Controls.Add($menuMain)
-    #$main_form.Controls.Add($menuMain)
-
+    $aboutWin = [System.Windows.Forms.Form]@{
+        ClientSize      = [System.Drawing.Point]::new(350, 150)
+        KeyPreview      = $true
+        FormBorderStyle = 'FixedToolWindow'
+        ControlBox      = $false
+        StartPosition   = 'CenterScreen'
+    }
+    $aboutWin.Add_KeyDown({ param($sender, $e) if ($e.KeyCode -eq 'Escape') { $aboutWin.close() } })
+    $labelsData = @(
+        @{ Text = $AboutInfo.Title; Title = $true; Desc = $false; Below = 25; Left = 10 },
+        @{ Text = $AboutInfo.Author; Title = $false; Desc = $false; Below = 55; Left = 10 },
+        @{ Text = $AboutInfo.Description; Title = $false; Desc = $true;  Below = 80; Left = 10 },
+        @{ Text = $AboutInfo.Version; Title = $false; Desc = $false; Below = 55; Left = 160 }
+    )
+    $line_start = [Int]0
+    foreach ($labelData in $labelsData) {
+        $label = New-Object System.Windows.Forms.Label
+        $label.Text = $labelData.Text
+        $font_size = if ($labelData.Title -eq $true) { 16 } else { 10 }
+        $label.BackColor = [System.Drawing.Color]::Transparent
+        $label.Font = New-Object System.Drawing.Font("Lucida Console",$font_size,[System.Drawing.FontStyle]::Regular)
+        $label.Location = New-Object System.Drawing.Point($labelData.Left, [Int] ($line_start + [Int]$labelData.Below) )
+        if ($labelData.Desc -eq $false){
+            $label.Autosize = $true
+        }else{
+            $label.width = 175
+            $label.height = 60
+        }
+        $aboutWin.Controls.Add($label)
+    }
+    $img = Set-Icon -InputFile $AboutInfo.Icon
+    $pictureBox_logo = [Windows.Forms.PictureBox]@{
+                Location      = [System.Drawing.Size]::new(225,25)
+                Size          = [System.Drawing.Size]::new(100,100)
+                Image         = $img
+                SizeMode      = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+    }
+    $aboutWin.controls.add($pictureBox_logo)
+    $aboutWin.Add_MouseClick({ $aboutWin.close() })
+    foreach ($childControl in $aboutWin.controls){
+        $childControl.Add_MouseClick({ $aboutWin.close() })
+    }
+    $aboutWin.ShowDialog()
 }
 function Set-PathMode{
     param($mode = $true)
@@ -326,20 +315,11 @@ function Show-InputBox {
 }
 function Cleanup {
     Write-Information "Script ending. Cleaning up variables..."
-
-    $main = $null
+    $main.Dispose()
+    Remove-Variable main
     $tabControls = $null
     $tabUser = $null
     $tabLocal = $null
     $tabLogin = $null
     Unregister-Event -SourceIdentifier ScriptExit | Out-Null
-}
-function dummy_tutorial{
-    #Add-comboList $TestArr 200 10 70 $main
-    #Add-listBox $TestArr 200 100 10 140 $main
-
-    #Add-comboListBox $TestArr 600 100 10 70 $main
-    #Ask-Question "My Question" 10 70 $Answers $main "check"
-    #Add-ProgressBar 45 510 30 200 $main
-    #$main.ShowDialog()
 }
