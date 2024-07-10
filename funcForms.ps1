@@ -203,7 +203,7 @@ function Add-TextBox{
     $main_form.Controls.Add($TextBox)
     $textBox.BringToFront()
     if ($EnableToolTip -eq $true){
-        Write-Warning "ToolTip Enabled"
+        Write-Debug "ToolTip Enabled"
         return ($label,$TextBox)
     }else{
         return $TextBox
@@ -213,8 +213,6 @@ function Add-Ident {
     param($obj, $uniqueID = $null)
 
     if ($uniqueID -eq $null) {
-        #Write-Debug "1: $($obj.Name -ne $null)"
-        #Write-Debug "2: $($obj.Name -ne '')"
         if ($obj.Name -ne $null -and $obj.Name -ne ""){
             $uniqueID = $obj.Name
         }else{
